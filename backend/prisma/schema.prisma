@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model catalogo_areas {
+  id_area       Int                        @id @default(autoincrement())
+  nombre_galera String                     @db.VarChar(100)
+  auditorias    registro_auditoria_maestro[]
+}
+
+model catalogo_auditores {
+  id_auditor      Int                        @id @default(autoincrement())
+  nombre_completo String                     @db.VarChar(100)
+  auditorias      registro_auditoria_maestro[]
+}
+
+model registro_auditoria_maestro {
+  id_auditoria           Int       @id @default(autoincrement())
+  id_area                Int
+  id_auditor             Int
+  nombre_representante   String    @db.VarChar(100)
+  fecha_inspeccion       DateTime  @default(now())
+  foto_evidencia_general String?
+  porcentaje_final       Decimal?  @default(0) @db.Decimal(5, 2)
+  puntos_restados        Int       @default(0)   // ← ÚNICA LÍNEA NUEVA
+
+  area        catalogo_areas        @relation(fields: [id_area], references: [id_area])
+  auditor     catalogo_auditores    @relation(fields: [id_auditor], references: [id_auditor])
+  detalles_5s detalle_evaluacion_5s[]
+}
+
+model detalle_evaluacion_5s {
+  id_detalle   Int                        @id @default(autoincrement())
+  id_auditoria Int
+  seccion_id   Int
+  titulo       String                     @db.VarChar(100)
+  puntuacion   Int
+  comentario   String?                    @db.Text
+
+  auditoria registro_auditoria_maestro @relation( fields: [id_auditoria], references: [id_auditoria],onDelete: Cascade)
+}
