@@ -5,32 +5,26 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 router.post('/evaluacion/guardar', async (req, res) => {
-  console.log('🎯 EVALUACIÓN RECIBIDA:', JSON.stringify(req.body, null, 2));
+  // Log inicial para ver qué llega desde el celular/navegador
+  console.log('🎯 RECIBIENDO EVALUACIÓN:', JSON.stringify(req.body, null, 2));
 
   try {
     const { id_auditoria, detalles, porcentaje_final } = req.body;
 
-    // 1. Validaciones de entrada
-    if (!id_auditoria) {
-      return res.status(400).json({ error: 'Falta id_auditoria' });
-    }
-    if (porcentaje_final === undefined || isNaN(porcentaje_final)) {
-      return res.status(400).json({ error: 'Falta o es inválido porcentaje_final' });
-    }
-    if (!detalles || typeof detalles !== 'object' || Object.keys(detalles).length === 0) {
-      return res.status(400).json({ error: 'Faltan detalles de las etapas' });
-    }
+    // 1. Validaciones básicas
+    if (!id_auditoria) return res.status(400).json({ error: 'Falta id_auditoria' });
+    if (!detalles) return res.status(400).json({ error: 'Faltan detalles' });
 
     const id = Number(id_auditoria);
 
-    // 2. Calcular puntos para la tabla maestra
+    // 2. Calcular puntos restados
     const puntosObtenidos = Object.values(detalles).reduce((sum, info) => {
-      const score = Number(info?.score || 0);
-      return sum + (isNaN(score) ? 0 : score);
+      return sum + (Number(info?.score) || 0);
     }, 0);
     const puntos_restados = Math.max(0, 25 - puntosObtenidos);
 
-    // 3. Actualizar registro_auditoria_maestro
+    // 3. ACTUALIZAR MAESTRO
+    console.log(`⏳ Actualizando Maestro ID: ${id}...`);
     await prisma.registro_auditoria_maestro.update({
       where: { id_auditoria: id },
       data: {
@@ -38,61 +32,56 @@ router.post('/evaluacion/guardar', async (req, res) => {
         puntos_restados: puntos_restados,
       },
     });
+    console.log('✅ MAESTRO OK');
 
-    console.log('✅ MAESTRO ACTUALIZADO:', { id_auditoria: id, porcentaje_final });
+    // 4. PREPARAR Y GUARDAR DETALLES
+    const entradas = Object.entries(detalles);
+    console.log(`📦 Procesando ${entradas.length} etapas para guardar...`);
 
-    // 4. Guardar detalles en detalle_evaluacion_5s
-    const operaciones = [];
-    
-    for (const [seccionStr, info] of Object.entries(detalles)) {
+    // Usamos un bucle for-of con await para mayor seguridad en el debug
+    for (const [seccionStr, info] of entradas) {
       const seccion = Number(seccionStr);
-
-      if (isNaN(seccion)) continue;
-
       const score = Number(info?.score || 0);
       const comentario = info?.comment?.trim() || 'Sin observaciones';
 
-      // Usamos los nombres exactos de tu Schema: seccion_id y puntuacion
-      operaciones.push(
-        prisma.detalle_evaluacion_5s.upsert({
-          where: {
-            id_auditoria_seccion: {
-              id_auditoria: id,
-              seccion_id: seccion
-            }
-          },
-          update: {
-            puntuacion: score,
-            comentario: comentario,
-            titulo: `Etapa ${seccion}`
-          },
-          create: {
+      console.log(`  -> Guardando Etapa ${seccion}: Score ${score}`);
+
+      await prisma.detalle_evaluacion_5s.upsert({
+        where: {
+          id_auditoria_seccion: {
             id_auditoria: id,
-            seccion_id: seccion,
-            titulo: `Etapa ${seccion}`,
-            puntuacion: score,
-            comentario: comentario
+            seccion_id: seccion
           }
-        })
-      );
+        },
+        update: {
+          puntuacion: score,
+          comentario: comentario,
+          titulo: `Etapa ${seccion}`
+        },
+        create: {
+          id_auditoria: id,
+          seccion_id: seccion,
+          titulo: `Etapa ${seccion}`,
+          puntuacion: score,
+          comentario: comentario
+        }
+      });
     }
 
-    // Ejecutar todas las actualizaciones de detalles
-    await Promise.all(operaciones);
-
-    console.log(`✅ ${operaciones.length} detalles procesados para auditoría ${id}`);
+    console.log(`✨ PROCESO COMPLETADO EXITOSAMENTE`);
 
     res.json({ 
       success: true, 
       id_auditoria: id,
-      porcentaje_final 
+      puntos_guardados: entradas.length 
     });
 
   } catch (error) {
-    console.error('💥 ERROR AL GUARDAR:', error);
+    console.error('💥 ERROR CRÍTICO EN BACKEND:', error);
     res.status(500).json({ 
-      error: 'Error al guardar en base de datos',
-      detalle: error.message 
+      error: 'Error interno al guardar',
+      codigo: error.code, // Útil para saber si es error de Prisma
+      mensaje: error.message 
     });
   }
 });
