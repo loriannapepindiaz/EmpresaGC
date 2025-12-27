@@ -2,7 +2,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient(); // ← IMPORTANTE
+const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get('/auditorias-5s', async (req, res) => {
@@ -24,6 +24,14 @@ router.get('/auditorias-5s', async (req, res) => {
         auditor: {
           select: { nombre_completo: true },
         },
+        // 🚀 ¡ESTO ES LO QUE FALTABA! 🚀
+        detalle_evaluacion_5s: {
+          select: {
+            seccion_id: true,
+            puntuacion: true,
+            comentario: true
+          }
+        }
       },
     });
 
