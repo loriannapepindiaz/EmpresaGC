@@ -24,8 +24,8 @@ router.get('/auditorias-5s', async (req, res) => {
         auditor: {
           select: { nombre_completo: true },
         },
-        // 🚀 ¡ESTO ES LO QUE FALTABA! 🚀
-        detalle_evaluacion_5s: {
+        // ✅ Corregido a 'detalles_5s' según la sugerencia de Prisma
+        detalles_5s: {
           select: {
             seccion_id: true,
             puntuacion: true,
