@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // Esto permite que tanto tu local como tu futura web en Vercel/Netlify se conecten
 const allowedOrigins = [
   'http://localhost:5173', 
-  'https://tu-app-frontend.vercel.app' // Reemplaza con tu URL real cuando la tengas
+  'https://empresagcf.vercel.app' // Reemplaza con tu URL real cuando la tengas
 ];
 
 app.use(cors({
