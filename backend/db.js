@@ -11,16 +11,16 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'lpd2008pdl',
   port: process.env.DB_PORT || 5432,
 
-  // ✅ LO NECESARIO PARA EVITAR BLOQUEOS CON PRISMA
-  max: 2,                       // No acapara todas las conexiones
-  idleTimeoutMillis: 10000,     // Libera conexiones rápido si nadie las usa
-  connectionTimeoutMillis: 5000, // No se queda colgado esperando eternamente
+  // 🛠️ ESTO ES LO QUE FALTA EN TU ARCHIVO Y ES LO QUE SOLUCIONA EL ERROR:
+  max: 2,                       // Limita este pool para dejarle espacio a Prisma
+  idleTimeoutMillis: 10000,     // Cierra conexiones inactivas rápido
+  connectionTimeoutMillis: 5000, // No permite que el servidor se quede colgado
 
   ssl: isProduction ? { rejectUnauthorized: false } : false
 });
 
 pool.on('connect', () => {
-  console.log('✅ Conexión exitosa a PostgreSQL');
+  console.log('✅ Conexión exitosa a PostgreSQL (Pool pg)');
 });
 
 pool.on('error', (err) => {
